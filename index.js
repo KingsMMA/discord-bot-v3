@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, PermissionsBitField } = require('discord.js');
+const { onVoiceStateUpdate } = require(path.join(__dirname, 'commands', 'utility', 'music'));
 require('dotenv').config();
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
@@ -55,6 +56,8 @@ client.on(Events.InteractionCreate, async interaction => {
 		await command.autocomplete(interaction);
 	}
 });
+
+client.on(Events.VoiceStateUpdate, onVoiceStateUpdate);
 
 // When the client is ready, run this code (only once).
 // The distinction between `client: Client<boolean>` and `readyClient: Client<true>` is important for TypeScript developers.

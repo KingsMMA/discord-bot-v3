@@ -1,5 +1,15 @@
-const { SlashCommandBuilder, SlashCommandSubcommandBuilder, ChatInputCommandInteraction, EmbedBuilder } = require('discord.js');
-const { joinVoiceChannel } = require('@discordjs/voice');
+const { SlashCommandBuilder, SlashCommandSubcommandBuilder, ChatInputCommandInteraction, EmbedBuilder, VoiceState, Snowflake, VoiceChannel } = require('discord.js');
+const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
+
+/**
+ *
+ * @param guild
+ * @param {Snowflake} userId
+ * @returns {VoiceChannel | null}
+ */
+function getVc(guild, userId) {
+	return guild.channels.cache.find(channel => (channel.type === 2 && channel.members.has(userId)));
+}
 
 /**
  * @param {ChatInputCommandInteraction} interaction
@@ -17,7 +27,7 @@ async function joinVc(interaction) {
 		});
 	}
 
-	let userVc = interaction.guild.channels.cache.find(channel => (channel.type === 2 && channel.members.has(interaction.user.id)));
+	let userVc = getVc(interaction.guild, interaction.user.id);
 	if (!userVc) {
 		return interaction.reply({
 			ephemeral: true,
@@ -47,6 +57,23 @@ async function joinVc(interaction) {
 
 }
 
+/**
+ * @param {VoiceState} oldState
+ * @param {VoiceState} newState
+ */
+async function onVoiceStateUpdate(oldState, newState) {
+	console.log(oldState);
+	console.log(newState);
+	const botVc = getVc(newState.guild, newState.client.user.id);
+	if (!botVc) return;
+	console.log('not null')
+	console.log(botVc.members.size)
+
+	if (botVc.members.size === 1) {
+		await (await newState.guild.members.fetchMe()).voice.disconnect();
+	}
+}
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('music')
@@ -64,4 +91,5 @@ module.exports = {
 			await joinVc(interaction);
 		}
 	},
+	onVoiceStateUpdate: onVoiceStateUpdate
 };
