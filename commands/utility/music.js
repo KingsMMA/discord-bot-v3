@@ -2,7 +2,7 @@ const { SlashCommandBuilder, SlashCommandSubcommandBuilder, ChatInputCommandInte
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 
 /**
- *
+ * Gets the VC that the user is in
  * @param guild
  * @param {Snowflake} userId
  * @returns {VoiceChannel | null}
