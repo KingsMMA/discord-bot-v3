@@ -65,10 +65,22 @@ async function onVoiceStateUpdate(oldState, newState) {
 	console.log(oldState);
 	console.log(newState);
 	const botVc = getVc(newState.guild, newState.client.user.id);
-	if (!botVc) return;
+	if (!botVc) {
+		// If the bot isn't in a VC, and someone joins the music VC, auto join
+		if (newState.channelId && newState.channelId === process.env.MUSIC_CHANNEL_ID) {
+			const connection = joinVoiceChannel({
+				channelId: newState.channelId,
+				guildId: newState.guild.id,
+				adapterCreator: newState.guild.voiceAdapterCreator
+			});
+		}
+		return;
+	}
 
+	// If everyone else has left the VC, leave.
 	if (botVc.members.size === 1) {
 		await (await newState.guild.members.fetchMe()).voice.disconnect();
+		return;
 	}
 }
 
