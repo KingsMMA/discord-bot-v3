@@ -44,7 +44,7 @@ async function joinVc(interaction) {
 	const connection = joinVoiceChannel({
 		channelId: userVc.id,
 		guildId: interaction.guildId,
-		adapterCreator: interaction.guild.voiceAdapterCreator // Should be referring to the correct client
+		adapterCreator: interaction.guild.voiceAdapterCreator
 	});
 	await interaction.editReply({
 		embeds: [
