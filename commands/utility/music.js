@@ -15,7 +15,7 @@ function getVc(guild, userId) {
  * @param {ChatInputCommandInteraction} interaction
  */
 async function joinVc(interaction) {
-	if (interaction.guild.channels.cache.some(channel => (channel.type === 2 && channel.members.has(interaction.client.user.id)))) {
+	if (getVc(interaction.guild, interaction.client.user.id)) {
 		return interaction.reply({
 			ephemeral: true,
 			embeds: [
