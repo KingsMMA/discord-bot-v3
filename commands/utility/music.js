@@ -66,8 +66,6 @@ async function onVoiceStateUpdate(oldState, newState) {
 	console.log(newState);
 	const botVc = getVc(newState.guild, newState.client.user.id);
 	if (!botVc) return;
-	console.log('not null')
-	console.log(botVc.members.size)
 
 	if (botVc.members.size === 1) {
 		await (await newState.guild.members.fetchMe()).voice.disconnect();
