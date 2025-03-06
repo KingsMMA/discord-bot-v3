@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, SlashCommandSubcommandBuilder, ChatInputCommandInteraction, EmbedBuilder, VoiceState, Snowflake, VoiceChannel } = require('discord.js');
-const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
+const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource} = require('@discordjs/voice');
+const ytdl = require("ytdl-core");
 
 /**
  * Gets the VC that the user is in
@@ -9,6 +10,16 @@ const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
  */
 function getVc(guild, userId) {
 	return guild.channels.cache.find(channel => (channel.type === 2 && channel.members.has(userId)));
+}
+
+function _joinVc(client, guild, channelId) {
+	client.musicPlayer = createAudioPlayer();
+	client.musicConnection = joinVoiceChannel({
+		channelId: channelId,
+		guildId: guild.id,
+		adapterCreator: guild.voiceAdapterCreator
+	});
+	client.musicConnection.subscribe(client.musicPlayer);
 }
 
 /**
@@ -41,11 +52,7 @@ async function joinVc(interaction) {
 	}
 
 	await interaction.deferReply({});
-	const connection = joinVoiceChannel({
-		channelId: userVc.id,
-		guildId: interaction.guildId,
-		adapterCreator: interaction.guild.voiceAdapterCreator
-	});
+	_joinVc(interaction.client, interaction.guild, userVc.id);
 	await interaction.editReply({
 		embeds: [
 			new EmbedBuilder()
@@ -55,6 +62,40 @@ async function joinVc(interaction) {
 		]
 	});
 
+}
+
+/**
+ * @param {ChatInputCommandInteraction} interaction
+ */
+function playMusic(interaction) {
+	const vc = getVc(interaction.guild, interaction.user.id);
+	if (!vc) {
+		return interaction.reply({
+			ephemeral: true,
+			embeds: [
+				new EmbedBuilder()
+					.setTitle('Error')
+					.setColor('Red')
+					.setDescription('You need to be in a VC to use this command.')
+			]
+		});
+	}
+
+	const botVc = getVc(interaction.guild, interaction.client.user.id);
+	if (vc !== botVc) {
+		return interaction.reply({
+			ephemeral: true,
+			embeds: [
+				new EmbedBuilder()
+					.setTitle('Error')
+					.setColor('Red')
+					.setDescription('You must be in the same VC as the bot to use this command.  Use `/music join` to make the bot join your current VC.')
+			]
+		});
+	}
+
+	const stream = ytdl("https://www.youtube.com/watch?v=liTfD88dbCo", { filter: 'audioonly' });
+	interaction.client.musicPlayer.play(createAudioResource(stream));
 }
 
 /**
@@ -68,11 +109,7 @@ async function onVoiceStateUpdate(oldState, newState) {
 	if (!botVc) {
 		// If the bot isn't in a VC, and someone joins the music VC, auto join
 		if (newState.channelId && newState.channelId === process.env.MUSIC_CHANNEL_ID) {
-			const connection = joinVoiceChannel({
-				channelId: newState.channelId,
-				guildId: newState.guild.id,
-				adapterCreator: newState.guild.voiceAdapterCreator
-			});
+			_joinVc(newState.client, newState.guild, newState.channelId);
 		}
 		return;
 	}
@@ -80,6 +117,9 @@ async function onVoiceStateUpdate(oldState, newState) {
 	// If everyone else has left the VC, leave.
 	if (botVc.members.size === 1) {
 		await (await newState.guild.members.fetchMe()).voice.disconnect();
+		newState.client.musicConnection = null;  // Let the garbage collector remove the music connection
+		newState.client.musicPlayer?.stop();
+		newState.client.musicPlayer = null;  // Let the garbage collector remove the music player
 		return;
 	}
 }
@@ -92,13 +132,18 @@ module.exports = {
 			new SlashCommandSubcommandBuilder()
 				.setName('join')
 				.setDescription('Makes the bot join the VC you\'re currently in.')
+		).addSubcommand(
+			new SlashCommandSubcommandBuilder()
+				.setName('play')
+				.setDescription('Starts the music bot.')
 		),
 	/**
 	 * @param {ChatInputCommandInteraction} interaction
 	 */
 	async execute(interaction) {
-		if (interaction.options.getSubcommand() === 'join') {
-			await joinVc(interaction);
+		switch (interaction.options.getSubcommand()) {
+			case 'join': return joinVc(interaction);
+			case 'play': return playMusic(interaction);
 		}
 	},
 	onVoiceStateUpdate: onVoiceStateUpdate
